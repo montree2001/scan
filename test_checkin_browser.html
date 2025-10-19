@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบเช็คอิน API</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .log-box {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #00ff00;
+            padding-left: 10px;
+        }
+        .log-error {
+            color: #ff4444;
+            border-left-color: #ff4444;
+        }
+        .log-success {
+            color: #44ff44;
+            border-left-color: #44ff44;
+        }
+        .log-info {
+            color: #4444ff;
+            border-left-color: #4444ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">🧪 ทดสอบ API เช็คอิน</h3>
+            </div>
+            <div class="card-body">
+                <form id="testForm">
+                    <div class="mb-3">
+                        <label class="form-label">เลขบัตรประชาชน</label>
+                        <input type="text" class="form-control" id="identifier" value="1101000268630">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">ประเภท</label>
+                        <select class="form-select" id="log_type">
+                            <option value="in">เข้า</option>
+                            <option value="out">ออก</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        ทดสอบเช็คอิน
+                    </button>
+                </form>
+
+                <div class="log-box" id="logBox">
+                    <div class="log-entry log-info">พร้อมทดสอบ...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const logBox = document.getElementById('logBox');
+
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logBox.appendChild(entry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function clearLogs() {
+            logBox.innerHTML = '';
+        }
+
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            clearLogs();
+            addLog('🚀 เริ่มทดสอบ...', 'info');
+
+            const formData = new FormData();
+            formData.append('identifier', document.getElementById('identifier').value);
+            formData.append('identifier_type', 'id_card');
+            formData.append('log_type', document.getElementById('log_type').value);
+            formData.append('gps_latitude', 13.7563);
+            formData.append('gps_longitude', 100.5018);
+            formData.append('is_outside_area', 0);
+
+            addLog('📤 ส่งข้อมูล: ' + JSON.stringify(Object.fromEntries(formData)), 'info');
+
+            try {
+                addLog('🌐 กำลังเรียก API...', 'info');
+
+                const response = await fetch('api_checkin.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                addLog('📥 ได้รับ Response - Status: ' + response.status, 'success');
+                addLog('📋 Content-Type: ' + response.headers.get('content-type'), 'info');
+
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+
+                const contentType = response.headers.get('content-type');
+                addLog('🔍 ตรวจสอบ Content-Type...', 'info');
+
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    addLog('❌ Response ไม่ใช่ JSON!', 'error');
+                    addLog('Response Text: ' + text, 'error');
+                    throw new Error('Response is not JSON');
+                }
+
+                addLog('✅ Content-Type ถูกต้อง', 'success');
+                addLog('🔄 กำลัง Parse JSON...', 'info');
+
+                const data = await response.json();
+
+                addLog('✅ Parse JSON สำเร็จ!', 'success');
+                addLog('📊 Data: ' + JSON.stringify(data, null, 2), 'success');
+
+                if (data.success) {
+                    addLog('🎉 เช็คอินสำเร็จ!', 'success');
+                    addLog('👤 นักเรียน: ' + data.student.first_name + ' ' + data.student.last_name, 'success');
+                    addLog('🕐 เวลา: ' + data.timestamp, 'success');
+                    addLog('🔁 ซ้ำ: ' + (data.is_duplicate ? 'ใช่' : 'ไม่'), 'info');
+                } else {
+                    addLog('❌ เช็คอินไม่สำเร็จ: ' + data.message, 'error');
+                }
+
+            } catch (error) {
+                addLog('💥 ERROR: ' + error.message, 'error');
+                addLog('Stack: ' + error.stack, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

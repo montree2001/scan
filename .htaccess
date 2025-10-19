@@ -1,0 +1,46 @@
+# Apache Configuration for College Scan System
+
+# Enable Rewrite Engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /scan/
+</IfModule>
+
+# PHP Settings
+<IfModule mod_php7.c>
+    php_flag display_errors On
+    php_flag display_startup_errors On
+    php_value error_reporting 32767
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+    php_value memory_limit 256M
+</IfModule>
+
+# Charset
+AddDefaultCharset UTF-8
+
+# Disable Directory Listing
+Options -Indexes
+
+# Protect config files
+<FilesMatch "^(config\.php|database\.php)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protect database folder
+<IfModule mod_rewrite.c>
+    RewriteRule ^database/ - [F,L]
+</IfModule>
+
+# Allow access to assets
+<FilesMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>
+
+# Error Pages (Optional)
+# ErrorDocument 404 /scan/404.php
+# ErrorDocument 500 /scan/500.php

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบแผนที่ Leaflet.js</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 15px;
+            border: 3px solid #0d6efd;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .legend {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 2px solid #0d6efd;
+        }
+
+        .legend h3 {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            color: #333;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 1rem;
+        }
+
+        .legend-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            margin-right: 15px;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .college-marker {
+            background: #dc3545;
+        }
+
+        .user-marker {
+            background: #0d6efd;
+        }
+
+        .radius-area {
+            background: rgba(25, 135, 84, 0.3);
+            border: 2px solid #198754 !important;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status-inside {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .status-outside {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        @media (max-width: 576px) {
+            #map {
+                height: 350px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🗺️ ทดสอบแผนที่ Leaflet.js</h1>
+
+            <div id="map"></div>
+
+            <div class="legend">
+                <h3>🏷️ สัญลักษณ์บนแผนที่</h3>
+                <div class="legend-item">
+                    <div class="legend-color college-marker"></div>
+                    <span><strong>วิทยาลัย</strong> - ตำแหน่งวิทยาลัย</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color user-marker"></div>
+                    <span><strong>คุณ</strong> - ตำแหน่งปัจจุบันของคุณ</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color radius-area"></div>
+                    <span><strong>พื้นที่</strong> - รัศมีที่อนุญาตให้เช็คอิน (500 เมตร)</span>
+                </div>
+            </div>
+
+            <div class="info-box" id="infoBox" style="display: none;">
+                <h3 style="margin-bottom: 15px;">📍 ข้อมูลตำแหน่ง</h3>
+                <div class="info-item">
+                    <span><strong>ระยะทาง:</strong></span>
+                    <span id="distanceText">-</span>
+                </div>
+                <div class="info-item">
+                    <span><strong>สถานะ:</strong></span>
+                    <span id="statusText">-</span>
+                </div>
+                <div class="info-item">
+                    <span><strong>พิกัดของคุณ:</strong></span>
+                    <span id="userCoords" style="font-size: 0.9rem;">-</span>
+                </div>
+                <div class="info-item">
+                    <span><strong>พิกัดวิทยาลัย:</strong></span>
+                    <span id="collegeCoords" style="font-size: 0.9rem;">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ตั้งค่าพิกัดวิทยาลัย (ค่าเริ่มต้น - กรุงเทพฯ)
+        const COLLEGE_LAT = 13.7563;
+        const COLLEGE_LNG = 100.5018;
+        const ALLOWED_RADIUS = 500; // เมตร
+
+        let map = null;
+        let collegeMarker = null;
+        let userMarker = null;
+        let radiusCircle = null;
+
+        // สร้างแผนที่
+        function initMap() {
+            console.log('🗺️ กำลังสร้างแผนที่...');
+
+            // สร้างแผนที่โดยให้ตำแหน่งเริ่มต้นที่วิทยาลัย
+            map = L.map('map').setView([COLLEGE_LAT, COLLEGE_LNG], 15);
+
+            // เพิ่ม tile layer จาก OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 19
+            }).addTo(map);
+
+            console.log('✅ เพิ่ม tile layer สำเร็จ');
+
+            // เพิ่มจุดหมายวิทยาลัย
+            collegeMarker = L.marker([COLLEGE_LAT, COLLEGE_LNG], {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: '<div style="background-color: #dc3545; width: 30px; height: 30px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(map);
+            collegeMarker.bindPopup('<strong>🏫 วิทยาลัย</strong><br>ตำแหน่งวิทยาลัย');
+
+            console.log('✅ เพิ่ม marker วิทยาลัยสำเร็จ');
+
+            // เพิ่มวงกลมแสดงรัศมีที่อนุญาต
+            radiusCircle = L.circle([COLLEGE_LAT, COLLEGE_LNG], {
+                color: '#198754',
+                fillColor: '#198754',
+                fillOpacity: 0.15,
+                radius: ALLOWED_RADIUS,
+                weight: 2
+            }).addTo(map);
+            radiusCircle.bindPopup('🎯 พื้นที่ที่อนุญาตให้เช็คอิน<br>รัศมี ' + ALLOWED_RADIUS + ' เมตร');
+
+            console.log('✅ เพิ่มวงกลมรัศมีสำเร็จ');
+
+            // แสดงพิกัดวิทยาลัย
+            document.getElementById('collegeCoords').textContent =
+                COLLEGE_LAT.toFixed(6) + ', ' + COLLEGE_LNG.toFixed(6);
+
+            // ตรวจสอบตำแหน่ง GPS
+            getUserLocation();
+        }
+
+        // ดึงตำแหน่ง GPS ของผู้ใช้
+        function getUserLocation() {
+            console.log('📍 กำลังขอตำแหน่ง GPS...');
+
+            if (!navigator.geolocation) {
+                console.error('❌ เบราว์เซอร์ไม่รองรับ Geolocation');
+                alert('เบราว์เซอร์ของคุณไม่รองรับ GPS');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+
+                    console.log('✅ ได้ตำแหน่ง GPS:', userLat, userLng);
+
+                    // คำนวณระยะทาง
+                    const distance = calculateDistance(
+                        COLLEGE_LAT, COLLEGE_LNG,
+                        userLat, userLng
+                    );
+
+                    console.log('📏 ระยะทาง:', Math.round(distance), 'เมตร');
+
+                    // เพิ่ม marker ตำแหน่งผู้ใช้
+                    addUserMarker(userLat, userLng, distance);
+                },
+                function(error) {
+                    console.error('❌ ไม่สามารถดึงตำแหน่งได้:', error.message);
+                    alert('ไม่สามารถดึงตำแหน่ง GPS ได้\nกรุณาเปิดใช้งาน Location Services');
+                }
+            );
+        }
+
+        // เพิ่ม marker ตำแหน่งผู้ใช้
+        function addUserMarker(lat, lng, distance) {
+            if (userMarker) {
+                map.removeLayer(userMarker);
+            }
+
+            userMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'custom-marker',
+                    html: '<div style="background-color: #0d6efd; width: 25px; height: 25px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [25, 25],
+                    iconAnchor: [12.5, 12.5]
+                })
+            }).addTo(map);
+
+            const distanceText = Math.round(distance) + ' ม.';
+            const isInside = distance <= ALLOWED_RADIUS;
+            const statusText = isInside ?
+                '<span style="color: #198754;">✅ อยู่ในพื้นที่</span>' :
+                '<span style="color: #dc3545;">❌ อยู่นอกพื้นที่</span>';
+
+            userMarker.bindPopup(
+                '<strong>📍 ตำแหน่งของคุณ</strong><br>' +
+                'ระยะทาง: ' + distanceText + '<br>' +
+                statusText
+            ).openPopup();
+
+            // ปรับแผนที่ให้แสดงทั้งสองจุด
+            const bounds = L.latLngBounds([
+                [COLLEGE_LAT, COLLEGE_LNG],
+                [lat, lng]
+            ]);
+            map.fitBounds(bounds, { padding: [50, 50] });
+
+            // แสดงข้อมูล
+            document.getElementById('infoBox').style.display = 'block';
+            document.getElementById('distanceText').textContent = distanceText;
+            document.getElementById('userCoords').textContent =
+                lat.toFixed(6) + ', ' + lng.toFixed(6);
+
+            const statusBadge = isInside ?
+                '<span class="status-badge status-inside">✅ อยู่ในพื้นที่</span>' :
+                '<span class="status-badge status-outside">❌ อยู่นอกพื้นที่</span>';
+            document.getElementById('statusText').innerHTML = statusBadge;
+
+            console.log('✅ อัพเดทแผนที่สำเร็จ');
+        }
+
+        // คำนวณระยะทางระหว่าง 2 จุด (Haversine formula)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // รัศมีโลก เป็นเมตร
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                     Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function toRad(degrees) {
+            return degrees * Math.PI / 180;
+        }
+
+        // เริ่มต้น
+        console.log('🚀 เริ่มต้นแอพพลิเคชัน');
+        initMap();
+    </script>
+</body>
+</html>
